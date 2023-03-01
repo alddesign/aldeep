@@ -17,9 +17,9 @@
             network.Initialize();
             network.RandomizeWeightsAndBiases();
 
-            network.SaveLayers();
+            string saveFilePath = network.SaveToFile(true);
             network.RandomizeWeightsAndBiases();
-            network.LoadLayers();
+            network.LoadFromFile(saveFilePath);
 
             Result result = network.Run(testSet);
 

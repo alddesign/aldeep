@@ -8,32 +8,13 @@ namespace AlDeep
         public double minWeight = -1.0;
         public double maxWeight = 1.0;
 
+        private const string saveFileDir = @".\save\";
+
         MemoryStream savedLayers = null;
 
         public NeuralNetwork(int noOfLayers)
         {
             this.layers = new Layer[noOfLayers];
-        }
-
-        public void SaveLayers()
-        {
-            this.savedLayers = new MemoryStream();
-            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
-
-            serializer.Serialize(this.savedLayers, this.layers);
-            this.savedLayers.Seek(0, SeekOrigin.Begin);
-        }
-
-        public void LoadLayers()
-        {
-            if(this.savedLayers == null)
-            {
-                throw new Exception("Cannot load layers. No layers saved.");
-            }
-
-            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
-            this.layers = (Layer[])serializer.Deserialize(this.savedLayers);
-
         }
 
         public void DefineLayer(int no, int noOfNodes)
@@ -92,7 +73,7 @@ namespace AlDeep
             }
         }
 
-        
+        #region Run
         public Result Run(Dataset set)
         {
             Result result = new Result();
@@ -161,7 +142,66 @@ namespace AlDeep
                 value = value;
             }    
         }
+        #endregion
 
+        #region Save/Load
+        private void SaveToMemory()
+        {
+            this.savedLayers = new MemoryStream();
+            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
+
+            serializer.Serialize(this.savedLayers, this.layers);
+            this.savedLayers.Seek(0, SeekOrigin.Begin);
+        }
+
+        public string SaveToFile(bool overwriteMemorySave, string filePath = "")
+        {
+            if(overwriteMemorySave)
+            {
+                this.SaveToMemory();
+            }
+
+            if(this.savedLayers == null)
+            {
+                throw new Exception("Cannot save neural network to file. Not saved.");
+            }
+
+            filePath = String.IsNullOrEmpty(filePath) ? this.GetSaveFilePath() : filePath;
+
+            FileStream fileStream = new FileStream(filePath, FileMode.OpenOrCreate);
+            this.savedLayers.WriteTo(fileStream);
+            fileStream.Close();
+
+            return filePath;
+        }
+
+        private void Load()
+        {
+            if(this.savedLayers == null)
+            {
+                throw new Exception("Cannot load neural network. Not saved.");
+            }
+
+            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
+            this.layers = (Layer[])serializer.Deserialize(this.savedLayers);
+        }
+
+        public void LoadFromFile(string filePath)
+        {
+            FileStream fileStream = new FileStream(filePath, FileMode.Open);
+            this.savedLayers = new MemoryStream();
+
+            fileStream.CopyTo(this.savedLayers);
+            fileStream.Close();
+
+            this.savedLayers.Seek(0, SeekOrigin.Begin);
+
+            this.Load();
+        }
+
+        #endregion
+
+        #region Helpers
         public double LogSigmoid(double x)
         {
             return 1.0 / (1.0 + Math.Exp(-x));
@@ -177,5 +217,11 @@ namespace AlDeep
 
             return array;
         }
+
+        private string GetSaveFilePath()
+        {
+            return NeuralNetwork.saveFileDir + DateTime.Now.ToString("yyyy-MM-dd_hh-mm-ss-fff") + ".layer";
+        }
+        #endregion
     }
 }
