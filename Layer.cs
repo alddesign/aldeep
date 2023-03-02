@@ -16,7 +16,7 @@ namespace AlDeep
 
         public Layer()
         {
-            //Serialization needs an empty constructor
+            //XML Serialization needs a parametersless constructor (see SaveManager)
         }
     }
 }

@@ -2,19 +2,22 @@ namespace AlDeep
 {
     public class NeuralNetwork
     {
-        Layer[] layers = new Layer[0];
+        public Layer[] layers;
         public double minBias = -10.0;
         public double maxBias = 0.0;
         public double minWeight = -1.0;
         public double maxWeight = 1.0;
+        public double correctPercent = 0.0;
 
-        private const string saveFileDir = @".\save\";
-
-        MemoryStream savedLayers = null;
-
+        #region Main
         public NeuralNetwork(int noOfLayers)
         {
             this.layers = new Layer[noOfLayers];
+        }
+
+        public NeuralNetwork()
+        {
+            //XML Serialization needs a parametersless constructor (see SaveManager)
         }
 
         public void DefineLayer(int no, int noOfNodes)
@@ -72,32 +75,30 @@ namespace AlDeep
                 }
             }
         }
+        #endregion
 
         #region Run
-        public Result Run(Dataset set)
+        public RunsResult Run(Dataset set)
         {
-            Result result = new Result();
-            result.total = set.entries.Length;
+            RunsResult results = new RunsResult();
+            results.total = set.entries.Length;
 
-            int runResult = 0;
-            int correct = 0;
-            result.StartTimer();
+            int result = 0;
+            results.StartTimer();
             for(int i = 0; i < set.entries.Length; i++)
             {
-                runResult = this.RunEntry(set.entries[i]);
-                correct = set.results[i];
-                result.correct += runResult == correct ? 1 : 0;
+                result = this.RunEntry(set.entries[i]);
+                set.results[i] = set.results[i];
+                results.correct += result == set.results[i] ? 1 : 0;
             }
-            result.StopTimer();
+            results.StopTimer();
 
-            return result;
+            return results;
         }
 
         private int RunEntry(double[] input)
         {
-            int l = Program.dataLength;
-
-            for(int i = 0; i < l; i++)
+            for(int i = 0; i < this.layers[0].nodes.Length; i++)
             {
                 this.layers[0].nodes[i].value = input[i];
             }
@@ -125,80 +126,76 @@ namespace AlDeep
 
         private void CalcLayer(int layerId)
         {
+            //Its faster to define a variable layer instead of using this.layers[layerId] in a loop
             Layer layer = this.layers[layerId];
             Layer parentLayer = this.layers[layerId - 1];
-
             double value = 0.0;
-
-            for(int i = 0; i < layer.nodes.Length; i++)
+            int l = layer.nodes.Length;
+            int l2 = parentLayer.nodes.Length;
+            
+            for(int i = 0; i < l; i++)
             {
                 value = 0.0;
-                for(int i2 = 0; i2 < parentLayer.nodes.Length; i2++)
+                for(int i2 = 0; i2 < l2; i2++)
                 {
                     value += parentLayer.nodes[i2].weights[i] * parentLayer.nodes[i2].value;
                 }
 
                 layer.nodes[i].value = this.LogSigmoid(value + layer.nodes[i].bias);
-                value = value;
-            }    
+            } 
         }
         #endregion
 
-        #region Save/Load
-        private void SaveToMemory()
+        #region Train
+        public void TrainRandom(Dataset set, int iterations, bool saveBestNetwork)
         {
-            this.savedLayers = new MemoryStream();
-            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
-
-            serializer.Serialize(this.savedLayers, this.layers);
-            this.savedLayers.Seek(0, SeekOrigin.Begin);
-        }
-
-        public string SaveToFile(bool overwriteMemorySave, string filePath = "")
-        {
-            if(overwriteMemorySave)
+            if(iterations <= 0)
             {
-                this.SaveToMemory();
+                throw new Exception("Please train for at least 1 iteration!");
             }
 
-            if(this.savedLayers == null)
+            Speed speed1 = new Speed();
+            Speed speed2 = new Speed();
+            RunsResult results = new RunsResult();
+            double bestCorrectPercent = 0.0;
+            int setSize = set.entries.Length;
+
+            Console.WriteLine(String.Format("Starting random training. Iterations: {0}, set size: {1}", iterations, setSize));
+            Console.WriteLine("########################################");
+
+            speed1.Start();
+            for(int i = 1; i <= iterations; i++)
             {
-                throw new Exception("Cannot save neural network to file. Not saved.");
+                //Change the network:
+                this.RandomizeWeightsAndBiases();
+
+                //Run the dataset:
+                results = this.Run(set);
+                this.correctPercent = results.getPercentCorrect();
+
+                Console.WriteLine(String.Format("Iteration {0}/{1} {2}%", i, iterations, correctPercent));
+
+                //Check new best correct
+                if(this.correctPercent > bestCorrectPercent)
+                {
+                    bestCorrectPercent = correctPercent;
+                    Console.WriteLine(String.Format("New best result {0}% !!!", bestCorrectPercent));
+
+                    if(saveBestNetwork)
+                    {
+                        //SaveManager.Save(this);
+                    }
+                }
             }
+            
+            double totalDurationMs = speed1.End();
+            double avgDurationMs = Math.Round(totalDurationMs/(double)iterations, 3);
 
-            filePath = String.IsNullOrEmpty(filePath) ? this.GetSaveFilePath() : filePath;
-
-            FileStream fileStream = new FileStream(filePath, FileMode.OpenOrCreate);
-            this.savedLayers.WriteTo(fileStream);
-            fileStream.Close();
-
-            return filePath;
+            Console.WriteLine("########################################");
+            Console.WriteLine(String.Format("Finished random training. Iterations: {0}, set size: {1}", iterations, setSize));
+            Console.WriteLine(String.Format("Average duration per iteration: {0}ms", avgDurationMs));
+            Console.WriteLine(String.Format("Best result: {0}%", bestCorrectPercent));
         }
-
-        private void Load()
-        {
-            if(this.savedLayers == null)
-            {
-                throw new Exception("Cannot load neural network. Not saved.");
-            }
-
-            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(Layer[]));
-            this.layers = (Layer[])serializer.Deserialize(this.savedLayers);
-        }
-
-        public void LoadFromFile(string filePath)
-        {
-            FileStream fileStream = new FileStream(filePath, FileMode.Open);
-            this.savedLayers = new MemoryStream();
-
-            fileStream.CopyTo(this.savedLayers);
-            fileStream.Close();
-
-            this.savedLayers.Seek(0, SeekOrigin.Begin);
-
-            this.Load();
-        }
-
         #endregion
 
         #region Helpers
@@ -216,11 +213,6 @@ namespace AlDeep
             }
 
             return array;
-        }
-
-        private string GetSaveFilePath()
-        {
-            return NeuralNetwork.saveFileDir + DateTime.Now.ToString("yyyy-MM-dd_hh-mm-ss-fff") + ".layer";
         }
         #endregion
     }
