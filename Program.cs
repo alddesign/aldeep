@@ -11,22 +11,7 @@ namespace AlDeep
             string trainCsvPath = @".\data\mnist_train.csv"; //60k
             string testCsvPath = @".\data\mnist_test.csv"; //10k
 
-            int i = 1000;
-
-            Thread tr1 = new Thread(Work);
-            tr1.Start(i);
-
-            Thread tr2 = new Thread(Work);
-            tr2.Start(i);
-
-            while(true)
-            {
-                Thread.Sleep(1000);
-                Console.WriteLine(String.Format("tr1: {0}, tr2: {1}", tr1.ThreadState.ToString(), tr2.ThreadState.ToString()));
-            }
-
-            /*
-            Dataset trainingSet = new Dataset(trainCsvPath);
+            Dataset set = new Dataset(trainCsvPath);
 
             NeuralNetwork network = new NeuralNetwork(2);
             network.DefineLayer(0, dataLength);
@@ -36,38 +21,19 @@ namespace AlDeep
             network.Initialize();
             network.RandomizeWeightsAndBiases();
             
-            network.TrainRandom(trainingSet, 1000, true);
-            SaveManager.ToFile();
-            */
+            RandomTrainer trainer = new RandomTrainer(network, set);
+            trainer.Train(12, 200, true, 10);
 
             /*
-            Dataset testSet = new Dataset(testCsvPath);
+            SaveManager saveManager = new SaveManager();
+            saveManager.FromFile(@".\save\15,18_percent_638135551900753486.aldeep");
+            NeuralNetwork network = saveManager.Load();
 
-            SaveManager.FromFile(@".\save\2023-03-02_09-02-11.459.save.aldeep.xml");
-            NeuralNetwork network = SaveManager.Load();
-
-            RunsResult result = network.Run(testSet);
-            result.Print();
+            int correct = network.Run(set);
+            double correctPercent = Math.Round(((double)correct/(double)set.entries.Length) * 100, 2);
+            Console.WriteLine(String.Format("Correct: {0}%. {1}/{2}", correctPercent, correct, set.entries.Length));
             */
-
             return;
-        }
-
-        static void Work(object input)
-        {
-            int l = (int)input;
-
-            NeuralNetwork network = new NeuralNetwork(2);
-            network.DefineLayer(0, dataLength);
-            network.DefineLayer(1, 9);
-            network.Initialize();
-            network.RandomizeWeightsAndBiases();
-
-            for(int i = 0; i < l; i++)
-            {
-                SaveManager.Save(network);
-            }
-
         }
     }
 }

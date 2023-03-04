@@ -4,78 +4,87 @@ namespace AlDeep
     {
         private const string saveFileDir = @".\save\";
 
-        private MemoryStream savedNeuralNetwork = null;
+        private MemoryStream savedNetwork = null;
 
+        /// <summary>
+        /// Saves the network in memory.
+        /// </summary>
         public void Save(NeuralNetwork network)
         {
-            savedNeuralNetwork = new MemoryStream();
+            savedNetwork = new MemoryStream();
             System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(NeuralNetwork));
 
-            serializer.Serialize(savedNeuralNetwork, network);
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
+            serializer.Serialize(savedNetwork, network);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
         }
 
+        /// <summary>
+        /// Writes the network saved in memory to a file.
+        /// </summary>
         public string ToFile(string filePath = "")
         {
-            if(savedNeuralNetwork == null)
+            if(savedNetwork == null)
             {
                 throw new Exception("No neural network saved or loaded from file.");
             }
 
             filePath = String.IsNullOrEmpty(filePath) ? GetSaveFilePath() : filePath;
 
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
             FileStream fileStream = new FileStream(filePath, FileMode.OpenOrCreate);
-            savedNeuralNetwork.WriteTo(fileStream);
+            savedNetwork.WriteTo(fileStream);
             fileStream.Close();
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
 
             return filePath;
         }
 
+        /// <summary>
+        /// Gets the networked saved in memory.
+        /// </summary>
         public NeuralNetwork Load()
         {
-            if(savedNeuralNetwork == null)
+            if(savedNetwork == null)
             {
                 throw new Exception("No neural network saved or loaded from file.");
             }
 
             System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(NeuralNetwork));
             
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
-            NeuralNetwork network = (NeuralNetwork)serializer.Deserialize(savedNeuralNetwork);
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
+            NeuralNetwork network = (NeuralNetwork)serializer.Deserialize(savedNetwork);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
 
             return network;
         }
 
         /// <summary>
-        /// Loads the network from file into memory.
+        /// Loads the network from a file into memory.
         /// </summary>
         public void FromFile(string filePath)
         {
             FileStream fileStream = new FileStream(filePath, FileMode.Open);
-            savedNeuralNetwork = new MemoryStream();
+            savedNetwork = new MemoryStream();
 
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
-            fileStream.CopyTo(savedNeuralNetwork);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
+            fileStream.CopyTo(savedNetwork);
             fileStream.Close();
-            savedNeuralNetwork.Seek(0, SeekOrigin.Begin);
+            savedNetwork.Seek(0, SeekOrigin.Begin);
         }
 
         public void Clear()
         {
-            if(savedNeuralNetwork != null)
+            if(savedNetwork != null)
             {
-                savedNeuralNetwork.Close();
-                savedNeuralNetwork = null;
+                savedNetwork.Close();
+                savedNetwork = null;
             }
         }
 
         #region Helpers
         private string GetSaveFilePath()
         {
-            return saveFileDir + DateTime.Now.ToString("yyyy-MM-dd_hh-mm-ss.fff") + ".aldeep";
+            return saveFileDir + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss.fff") + ".aldeep";
         }
         #endregion
     }

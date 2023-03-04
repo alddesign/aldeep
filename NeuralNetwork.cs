@@ -7,7 +7,7 @@ namespace AlDeep
         public double maxBias = 0.0;
         public double minWeight = -1.0;
         public double maxWeight = 1.0;
-        public double correctPercent = 0.0;
+        public const int dataVersion = 1;
 
         #region Main
         public NeuralNetwork(int noOfLayers)
@@ -47,6 +47,7 @@ namespace AlDeep
         {
             int l = 0;
             Layer layer;
+            Thread.Sleep(new Random().Next(0,30));
             Random random = new Random();
 
             //Weights for layers 0..n-1
@@ -78,22 +79,25 @@ namespace AlDeep
         #endregion
 
         #region Run
-        public RunsResult Run(Dataset set)
+        /// <summary>
+        /// Runs a specific dataset through this network.
+        /// </summary>
+        /// <param name="set"></param>
+        /// <returns>The number of correct results</returns>
+        public int Run(Dataset set)
         {
-            RunsResult results = new RunsResult();
-            results.total = set.entries.Length;
-
             int result = 0;
-            results.StartTimer();
+            int correct = 0;
             for(int i = 0; i < set.entries.Length; i++)
             {
                 result = this.RunEntry(set.entries[i]);
-                set.results[i] = set.results[i];
-                results.correct += result == set.results[i] ? 1 : 0;
+                if(result == set.results[i])
+                {
+                    correct++;
+                }
             }
-            results.StopTimer();
 
-            return results;
+            return correct;
         }
 
         private int RunEntry(double[] input)
@@ -143,58 +147,6 @@ namespace AlDeep
 
                 layer.nodes[i].value = this.LogSigmoid(value + layer.nodes[i].bias);
             } 
-        }
-        #endregion
-
-        #region Train
-        public void TrainRandom(Dataset set, int iterations, bool saveBestNetwork)
-        {
-            if(iterations <= 0)
-            {
-                throw new Exception("Please train for at least 1 iteration!");
-            }
-
-            Speed speed1 = new Speed();
-            Speed speed2 = new Speed();
-            RunsResult results = new RunsResult();
-            double bestCorrectPercent = 0.0;
-            int setSize = set.entries.Length;
-
-            Console.WriteLine(String.Format("Starting random training. Iterations: {0}, set size: {1}", iterations, setSize));
-            Console.WriteLine("########################################");
-
-            speed1.Start();
-            for(int i = 1; i <= iterations; i++)
-            {
-                //Change the network:
-                this.RandomizeWeightsAndBiases();
-
-                //Run the dataset:
-                results = this.Run(set);
-                this.correctPercent = results.getPercentCorrect();
-
-                Console.WriteLine(String.Format("Iteration {0}/{1} {2}%", i, iterations, correctPercent));
-
-                //Check new best correct
-                if(this.correctPercent > bestCorrectPercent)
-                {
-                    bestCorrectPercent = correctPercent;
-                    Console.WriteLine(String.Format("New best result {0}% !!!", bestCorrectPercent));
-
-                    if(saveBestNetwork)
-                    {
-                        //SaveManager.Save(this);
-                    }
-                }
-            }
-            
-            double totalDurationMs = speed1.End();
-            double avgDurationMs = Math.Round(totalDurationMs/(double)iterations, 3);
-
-            Console.WriteLine("########################################");
-            Console.WriteLine(String.Format("Finished random training. Iterations: {0}, set size: {1}", iterations, setSize));
-            Console.WriteLine(String.Format("Average duration per iteration: {0}ms", avgDurationMs));
-            Console.WriteLine(String.Format("Best result: {0}%", bestCorrectPercent));
         }
         #endregion
 

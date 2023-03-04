@@ -4,9 +4,12 @@ namespace AlDeep
     {
         private DateTime started; 
 
-        public Speed()
+        public Speed(bool start = false)
         {
-
+            if(start)
+            {
+                this.Start();
+            }
         }
 
         public void Start()
@@ -14,7 +17,7 @@ namespace AlDeep
             this.started = DateTime.Now;
         }
 
-        public double End(int decimals = 3)
+        public double End(int decimals = 2)
         {
             return (double)Math.Round((DateTime.Now - this.started).TotalMilliseconds, decimals);
         }
