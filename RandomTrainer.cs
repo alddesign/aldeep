@@ -18,9 +18,11 @@ namespace AlDeep
         }
 
         #region Train
-        public void Train(int noOfThreads, int iterations,  bool saveBestNetwork, int updateIntervalSec = 10)
+        public void Train(int noOfThreads, int totalIterations,  bool saveBestNetwork, int updateIntervalSec = 10)
         {
             int setSize = this.set.entries.Length;
+            int iterationsPerThread = totalIterations / noOfThreads;
+            int restIterations = totalIterations - iterationsPerThread * noOfThreads;
             this.workers = new Thread[noOfThreads];
             this.workerNetworks = new NeuralNetwork[noOfThreads];
             this.workerSaveManagers = new SaveManager[noOfThreads];
@@ -36,23 +38,30 @@ namespace AlDeep
                 this.workerData[tid] = new WorkerData();
 
                 this.workers[tid] = new Thread(Worker);
-                this.workers[tid].Start(new WorkerArgs(){ iterations = iterations, saveBestNetwork = saveBestNetwork, tid = tid});
+                this.workers[tid].Start(new WorkerArgs()
+                { 
+                    iterations = tid == 0 ? iterationsPerThread + restIterations : iterationsPerThread,   
+                    saveBestNetwork = saveBestNetwork, 
+                    tid = tid
+                });
             }
             saveManager.Clear();
             saveManager = null;
 
             //Run Training
-            Console.WriteLine("### Start random training on {0} threads, set size: {1}", noOfThreads, setSize);
+            Console.WriteLine("### Start random training on {0} threads, {1} iterations, set size: {2}", noOfThreads, totalIterations, setSize);
             
             bool running = true;
             double bestCorrectPercent = 0.0;
             int bestCorrect = 0;
             int bestTid = 0;
+            int iterationsDone = 0;
             while(running)
             {
                 Thread.Sleep(updateIntervalSec * 1000);
                 
                 running = false;
+                iterationsDone = 0;
                 for(int tid = 0; tid < noOfThreads; tid++)
                 {
                     if(this.workers[tid].ThreadState == ThreadState.Running)
@@ -65,10 +74,13 @@ namespace AlDeep
                         bestCorrect = this.workerData[tid].bestCorrect;
                         bestTid = tid;
                     }
+
+                    iterationsDone += this.workerData[tid].iteration;
                 }
                 
+
                 bestCorrectPercent = Math.Round((double)bestCorrect/(double)setSize * 100, 2);
-                Console.WriteLine(String.Format("Iteration: {0}/{1}. Best correct: {2}%", this.workerData[0].iteration, iterations, bestCorrectPercent));
+                Console.WriteLine(String.Format("Iteration: {0}/{1}. Best correct: {2}%", iterationsDone, totalIterations, bestCorrectPercent));
             }
 
             //Save best Network          
@@ -83,7 +95,7 @@ namespace AlDeep
             {
                 totalAllThreadsDuration += this.workerData[tid].totalDuration;
             }
-            double avgIterationDuration = (totalAllThreadsDuration / (double)noOfThreads) / ((double)(iterations * noOfThreads)); 
+            double avgIterationDuration = (totalAllThreadsDuration / (double)noOfThreads) / (double)totalIterations; 
     
             Console.WriteLine("### Random training finished.");
             Console.WriteLine(String.Format("### Best correct: {0}%.", bestCorrectPercent));
@@ -99,7 +111,6 @@ namespace AlDeep
             bool saveBestNetwork = args.saveBestNetwork;
             int correct = 0;
             int bestCorrect = 0;
-
 
             Speed speed = new Speed();
             speed.Start();

@@ -15,14 +15,14 @@ namespace AlDeep
 
             NeuralNetwork network = new NeuralNetwork(2);
             network.DefineLayer(0, dataLength);
-            network.DefineLayer(1, 9);
-            network.minBias = -10.0;
+            network.DefineLayer(1, 10);
+            network.minBias = -20.0;
             network.maxBias = 0;
             network.Initialize();
             network.RandomizeWeightsAndBiases();
             
             RandomTrainer trainer = new RandomTrainer(network, set);
-            trainer.Train(12, 200, true, 10);
+            trainer.Train(12, 120, false, 10);
 
             /*
             SaveManager saveManager = new SaveManager();

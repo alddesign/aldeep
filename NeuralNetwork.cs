@@ -7,7 +7,7 @@ namespace AlDeep
         public double maxBias = 0.0;
         public double minWeight = -1.0;
         public double maxWeight = 1.0;
-        public const int dataVersion = 1;
+        public const int dataVersion = 3;
 
         #region Main
         public NeuralNetwork(int noOfLayers)
@@ -102,30 +102,21 @@ namespace AlDeep
 
         private int RunEntry(double[] input)
         {
-            for(int i = 0; i < this.layers[0].nodes.Length; i++)
+            int l = this.layers[0].nodes.Length;
+            for(int i = 0; i < l; i++)
             {
                 this.layers[0].nodes[i].value = input[i];
             }
 
-            for(int i = 1; i < this.layers.Length; i++)
+            l = this.layers.Length;
+            for(int i = 1; i < l; i++)
             {
                 this.CalcLayer(i);
             }
 
-            //Get the brightes node from the last layer
+            
             Layer lastLayer = this.layers[this.layers.Length - 1];
-            double max = -9999999;
-            int result = 0;
-            for(int i = 0; i < lastLayer.nodes.Length; i++)
-            {
-                if(lastLayer.nodes[i].value > max)
-                {
-                    max = lastLayer.nodes[i].value;
-                    result = i + 1;
-                }
-            }
-
-            return result;
+            return this.getIndexOfNodeWithHighestValue(lastLayer.nodes);
         }
 
         private void CalcLayer(int layerId)
@@ -151,9 +142,9 @@ namespace AlDeep
         #endregion
 
         #region Helpers
-        public double LogSigmoid(double x)
+        public double LogSigmoid(double value)
         {
-            return 1.0 / (1.0 + Math.Exp(-x));
+            return 1.0 / (1.0 + Math.Exp(-value));
         }
 
         private double[] initArray(int length, double value)
@@ -165,6 +156,25 @@ namespace AlDeep
             }
 
             return array;
+        }
+
+        /// <summary>
+        /// Returns the index of the node with the highest value in an Node[] array
+        /// </summary>
+        private int getIndexOfNodeWithHighestValue(Node[] nodes)
+        {
+            double max = -9999.0;
+            int result = 0;
+            for(int i = 0; i < nodes.Length; i++)
+            {
+                if(nodes[i].value > max)
+                {
+                    max = nodes[i].value;
+                    result = i;
+                }
+            }     
+
+            return result;   
         }
         #endregion
     }
